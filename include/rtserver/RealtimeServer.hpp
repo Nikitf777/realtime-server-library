@@ -1,6 +1,6 @@
 #ifndef REALTIME_SERVER_HPP
 #define REALTIME_SERVER_HPP
-//#include "TcpListenerAsync.h"
+
 #include <sockpp/tcp_acceptor.h>
 #include "rtserver/ClientSocket.hpp"
 #include "rtserver/AutoMap.hpp"
@@ -10,7 +10,7 @@
 
 
 
-class RealTimeServer
+class RealtimeServer
 {
 public:
 	struct DataPackage {
@@ -34,11 +34,16 @@ private:
 
 	void onClientDisconnected(PlayerDisconnected event);
 
-public:
-	RealTimeServer(int port, uint8_t serverCapacity);
+	void _listen();
+	void _mainLoop();
 
-	void listen();
-	void mainLoop();
+public:
+
+
+	RealtimeServer(int port, uint8_t serverCapacity);
+
+	void start();
+
 };
 
 #endif

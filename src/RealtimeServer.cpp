@@ -7,12 +7,12 @@ constexpr int EVENTS_BUFFER_SIZE = 65536;
 constexpr int STATE_BUFFER_SIZE = 16384;
 // using namespace clserv;
 
-void RealTimeServer::onClientDisconnected(PlayerDisconnected event)
+void RealtimeServer::onClientDisconnected(PlayerDisconnected event)
 {
 	_clients.remove(event.id);
 }
 
-RealTimeServer::RealTimeServer(int port, uint8_t serverCapacity) :
+RealtimeServer::RealtimeServer(int port, uint8_t serverCapacity) :
 	_acceptor(port),
 	_serverCapacity(serverCapacity),
 	_eventsStream(EVENTS_BUFFER_SIZE),
@@ -22,7 +22,13 @@ RealTimeServer::RealTimeServer(int port, uint8_t serverCapacity) :
 	//_clients.reserve(_serverCapacity);
 }
 
-void RealTimeServer::listen()
+void RealtimeServer::start()
+{
+	std::thread([this]{_listen();}).detach();
+	std::thread([this]{_mainLoop();}).detach();
+}
+
+void RealtimeServer::_listen()
 {
 	_isListening = true;
 	_acceptor.listen();
@@ -93,7 +99,7 @@ void RealTimeServer::listen()
 	}
 }
 
-void RealTimeServer::mainLoop()
+void RealtimeServer::_mainLoop()
 {
 	while (true)
 	{

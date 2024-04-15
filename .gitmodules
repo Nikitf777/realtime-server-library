@@ -1,0 +1,6 @@
+[submodule "third-party/ByteStream"]
+	path = third-party/ByteStream
+	url = git@github.com:Nikitf777/ByteStream.git
+[submodule "third-party/object_threadsafe"]
+	path = third-party/object_threadsafe
+	url = https://github.com/AlexeyAB/object_threadsafe.git

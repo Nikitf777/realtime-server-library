@@ -1,4 +1,7 @@
 #define DEBUG
+#define DISABLE_EVENTS_SENDING
+#define DISABLE_STATE_SENDING
+
 
 #include "rtserver/RealtimeServer.hpp"
 
@@ -36,16 +39,22 @@ void RealtimeServer::_listen()
 	while (_isListening)
 	{
 		auto result = _acceptor.accept();
-		if (result.is_error())
+		if (result.is_error()){
+			std::cerr << "Error when accepting\n";
 			break;
+		}
 		
 		ClientSocket* newClient = new ClientSocket(std::move(result.release()));
+		std::cout << "Client connected\n";
+		size_t newId = _clients.add(newClient);
+		newClient->authorize(newId);
+		// 
 
-		_connectActions->push([this, newClient]() {
-			size_t newId = _clients.add(newClient);
-			newClient->authorize(newId);
-			return newClient;
-			});
+		// _connectActions->push([this, newClient]() {
+		// 	size_t newId = _clients.add(newClient);
+		// 	newClient->authorize(newId);
+		// 	return newClient;
+		// 	});
 
 		newClient->connected = [this](PlayerAction<Authorized> event) {
 			_eventHandler.onClientAuthorized(event); 
@@ -113,6 +122,7 @@ void RealtimeServer::_mainLoop()
 			_gameStateStream.getBuf(message);
 				for (int i = 0; i < _connectActions->size(); i++) {
 					ClientSocket* client = _connectActions->front()();
+					_connectActions->pop();
 #ifdef DEBUG
 					std::cout
 						<< "mailLoop; "
@@ -130,11 +140,12 @@ void RealtimeServer::_mainLoop()
 					//	std::cout << "sended id " << (int)message[index] << std::endl;
 					//}
 #endif // DEBUG
-
+#ifndef DISABLE_EVENTS_SENDING
 					client->send((char*)message, size);
+#endif
 				}
 		}
-		std::cout << "Server loop\n";
+		//std::cout << "Server loop\n";
 		_eventsStream.clear();
 		_eventHandler.write(_eventsStream);
 		

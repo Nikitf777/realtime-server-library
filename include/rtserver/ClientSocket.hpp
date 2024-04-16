@@ -51,6 +51,9 @@ private:
 
 
 public:
+
+	std::function<void(ClientSocket*)> readyEvent;
+
 	std::function<void(PlayerAction<Authorized>)> connected;
 	std::function<void(PlayerAction<Spawned>)> spawnedEvent;
 	std::function<void(PlayerAction<Moved>)> movedEvent;
@@ -65,7 +68,7 @@ public:
 
 	ClientSocket(sockpp::tcp_socket socket);
 	void authorize(byte id);
-	void Receiving();
+	void receiving();
 	void stop();
 	void send(const char* buffer, int size);
 

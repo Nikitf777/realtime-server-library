@@ -172,27 +172,47 @@ ClientSocket::ClientSocket(sockpp::tcp_socket socket)
 
 void ClientSocket::authorize(byte id)
 {
+
 	_id = id;
 	byte bufferB[1] = { _id };
 	char* buffer = (char*)bufferB;
-	send(buffer, sizeof bufferB);
-	char nameBuffer[15];
-	auto result = _socket.recv(nameBuffer, sizeof(nameBuffer));
-	std::array<char, 15> name{};
-	for (char i = 0; i < result.value(); i++)
-		_name[i] = nameBuffer[i];
-	PlayerAction<Authorized> event{ _id, name };
-	if (connected != nullptr)
-		connected(event);
 
-	_connected = true;
+	try
+	{
+		/* code */
+		send(buffer, sizeof bufferB);
+	}
+	catch(const std::exception& e)
+	{
+		std::cerr << "Error while sending during authorize()\n" << e.what() << '\n';
+		return;
+	}
+	
 
 	std::thread([this] {
-		Receiving();
+		char nameBuffer[15];
+		auto result = _socket.recv(nameBuffer, sizeof(nameBuffer));
+		std::array<char, 15> name{};
+		
+		for (char i = 0; i < result.value(); i++)
+			_name[i] = nameBuffer[i];
+
+		PlayerAction<Authorized> event{ _id, name };
+		if (connected != nullptr)
+			connected(event);
+
+		_connected = true;
+
+		if (readyEvent != nullptr)
+			readyEvent(this);
+
+			// await for receive game state
+
+			receiving();
 		}).detach();
 }
 
-void ClientSocket::Receiving()
+void ClientSocket::receiving()
 {
 	while (true)
 	{
@@ -223,9 +243,8 @@ void ClientSocket::Receiving()
 #endif // !DEBUG
 
 		auto package = PackageFromPlayer::readFromStream(stream);
-		//std::cout << package.toString() << std::endl;
-		emitSignals(package);
-		//std::cout << package.toString();
+		std::cout << package.toString() << std::endl;
+		//emitSignals(package);
 
 		auto endTime = std::chrono::high_resolution_clock::now();
 		double delta = std::chrono::duration<double, std::micro>(endTime - startTime).count();

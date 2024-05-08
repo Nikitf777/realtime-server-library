@@ -6,7 +6,6 @@
 #include "rtserver/AutoMap.hpp"
 #include "rtserver/EventHandler.hpp"
 #include "Game.hpp"
-#include <list>
 
 
 
@@ -22,6 +21,7 @@ private:
 
 	AutoMap<ClientSocket*> _clients;
 	sf::safe_ptr<std::queue<std::function<ClientSocket*()>>> _connectActions;
+	sf::safe_ptr<std::queue<ClientSocket*>> _justConnectedClients;
 	std::vector<DataPackage> _dataToSend;
 	const uint8_t _serverCapacity;
 	EventHandler _eventHandler;

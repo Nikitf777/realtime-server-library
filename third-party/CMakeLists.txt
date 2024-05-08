@@ -1,6 +1,7 @@
 #include_directories(object_threadsafe)
 
 add_subdirectory(ByteStream)
+add_subdirectory(asyncpp)
 
 add_library(object_threadsafe-lib INTERFACE)
 target_include_directories(object_threadsafe-lib INTERFACE object_threadsafe)

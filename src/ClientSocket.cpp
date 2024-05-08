@@ -42,8 +42,8 @@ void ClientSocket::getShot(ByteStream& stream)
 	if (!event)
 		return;
 
-		if (shotEvent != nullptr)
-			shotEvent({ _id, event.value() });
+	if (shotEvent != nullptr)
+		shotEvent({ _id, event.value() });
 }
 void ClientSocket::getEnemyKilled(ByteStream& stream)
 {
@@ -150,6 +150,41 @@ void ClientSocket::emitSignals(PackageFromPlayer& package) const
 
 }
 
+void ClientSocket::_authorize()
+{
+	std::cout << "_authorize _id = " << (int)_id << std::endl;
+	byte bufferB[1] = { _id };
+	char* buffer = (char*)bufferB;
+
+	_socket.send(buffer, sizeof bufferB);
+
+	// try
+	// {
+	// 	/* code */
+	// }
+	// catch(const std::exception& e)
+	// {
+	// 	std::cerr << "Error while sending during authorize()\n" << e.what() << '\n';
+	// 	co_return;
+	// }
+
+	char nameBuffer[15];
+	auto result = _socket.recv(nameBuffer, sizeof(nameBuffer));
+	std::array<char, 15> name{};
+	
+	for (char i = 0; i < result.value(); i++)
+		_name[i] = nameBuffer[i];
+
+	
+	std::cout << "_authorize _id = " << (int)_id << std::endl;
+	if (connectedEvent != nullptr)
+		connectedEvent(PlayerAction<Authorized>{ _id, name });
+
+	_isConnected = true;
+
+	if (readyEvent != nullptr)
+		readyEvent(this);
+}
 void ClientSocket::printAligned(char* buffer, size_t size, unsigned char alignment)
 {
 	size_t rowCount = size / alignment;
@@ -172,48 +207,16 @@ ClientSocket::ClientSocket(sockpp::tcp_socket socket)
 
 void ClientSocket::authorize(byte id)
 {
-
 	_id = id;
-	byte bufferB[1] = { _id };
-	char* buffer = (char*)bufferB;
-
-	try
-	{
-		/* code */
-		send(buffer, sizeof bufferB);
-	}
-	catch(const std::exception& e)
-	{
-		std::cerr << "Error while sending during authorize()\n" << e.what() << '\n';
-		return;
-	}
-	
-
-	std::thread([this] {
-		char nameBuffer[15];
-		auto result = _socket.recv(nameBuffer, sizeof(nameBuffer));
-		std::array<char, 15> name{};
-		
-		for (char i = 0; i < result.value(); i++)
-			_name[i] = nameBuffer[i];
-
-		PlayerAction<Authorized> event{ _id, name };
-		if (connected != nullptr)
-			connected(event);
-
-		_connected = true;
-
-		if (readyEvent != nullptr)
-			readyEvent(this);
-
-			// await for receive game state
-
-			receiving();
-		}).detach();
+	std::cout << "authorize _id = " << (int)_id << std::endl;
+	std::thread([this]() {
+		this->_authorize();
+	}).detach();
 }
 
 void ClientSocket::receiving()
 {
+	// co_await event;
 	while (true)
 	{
 		auto startTime = std::chrono::high_resolution_clock::now();
@@ -243,8 +246,9 @@ void ClientSocket::receiving()
 #endif // !DEBUG
 
 		auto package = PackageFromPlayer::readFromStream(stream);
+		std::cout << "Received package: " << std::endl;
 		std::cout << package.toString() << std::endl;
-		//emitSignals(package);
+		emitSignals(package);
 
 		auto endTime = std::chrono::high_resolution_clock::now();
 		double delta = std::chrono::duration<double, std::micro>(endTime - startTime).count();
@@ -260,22 +264,25 @@ void ClientSocket::stop()
 {
 	_stop = true;
 }
-
 void ClientSocket::send(const char* buffer, int size)
 {
 	_mutex.lock();
-	try
-	{
-		std::cout << (_socket.send((void*)buffer, size)).value() << std::endl;
-	}
-	catch (const std::exception&)
-	{
-		std::cout << "Player " << _id << " disconnected\n";
-	}
+	_socket.send((void*)buffer, size);
 	_mutex.unlock();
+}
+
+void ClientSocket::sendState(const char *buffer, int size)
+{
+	send(buffer, size);
+	// event.set();
+
+	// Placeholder
+	std::thread([this]() {
+		this->receiving();
+	}).detach();
 }
 
 bool ClientSocket::isConnected() const
 {
-	return _connected;
+	return _isConnected;
 }

@@ -1,6 +1,6 @@
 #define DEBUG
 #define DISABLE_EVENTS_SENDING
-#define DISABLE_STATE_SENDING
+// #define DISABLE_STATE_SENDING
 
 
 #include "rtserver/RealtimeServer.hpp"
@@ -45,19 +45,43 @@ void RealtimeServer::_listen()
 		}
 		
 		ClientSocket* newClient = new ClientSocket(std::move(result.release()));
-		std::cout << "Client connected\n";
 		size_t newId = _clients.add(newClient);
-		newClient->authorize(newId);
-		// 
+		std::cout << "Client connected and got id = " << newId << std::endl;
+		newClient->readyEvent = [this](ClientSocket* socket){
+			this->_justConnectedClients->push(socket);
+		};
 
+
+// Hello from realtime server
+// Client connected and got id = 0
+// 1
+// Authorized id = 0
+// _authorizedPlayers.size = 1
+// Client connected and got id = 1
+// 1
+// Authorized id = 1
+// _authorizedPlayers.size = 2
+// Client connected and got id = 2
+// 1
+// Client connected and got id = 3
+// 1
+// Authorized id = 2
+// _authorizedPlayers.size = 3
+// Authorized id = 0
+// _authorizedPlayers.size = 3
+// Writed _authorizedPlayers->size()3
+
+
+		// 
 		// _connectActions->push([this, newClient]() {
 		// 	size_t newId = _clients.add(newClient);
 		// 	newClient->authorize(newId);
 		// 	return newClient;
 		// 	});
 
-		newClient->connected = [this](PlayerAction<Authorized> event) {
-			_eventHandler.onClientAuthorized(event); 
+		newClient->connectedEvent = [this](PlayerAction<Authorized> event) {
+			std::cout << "connectEvent Authorized id = " << (int)event.id << std::endl;
+			_eventHandler.onClientAuthorized(event);
 			_game.onPlayerAuthorized(event);
 			};
 		newClient->spawnedEvent = [this](PlayerAction<Spawned> event) {
@@ -105,6 +129,9 @@ void RealtimeServer::_listen()
 			_game.onPlayerDisconnected(event);
 			};
 
+		// Authorize client only after all events are set
+		newClient->authorize(newId);
+
 	}
 }
 
@@ -113,41 +140,64 @@ void RealtimeServer::_mainLoop()
 	while (true)
 	{
 		auto startTime = std::chrono::high_resolution_clock::now();
-		if (_connectActions->size() > 0)
-		{
+
+		if (_justConnectedClients->size() > 0){
 			_gameStateStream.clear();
+			_gameStateStream << byte(0);
 			_game.writeState(_gameStateStream);
+			std::cout << "_gameStateStream length = " << _gameStateStream.getLength() << std::endl;
 			unsigned char* message = new unsigned char[_gameStateStream.getLength()];
 			size_t size = _gameStateStream.getLength();
 			_gameStateStream.getBuf(message);
-				for (int i = 0; i < _connectActions->size(); i++) {
-					ClientSocket* client = _connectActions->front()();
-					_connectActions->pop();
-#ifdef DEBUG
-					std::cout
-						<< "mailLoop; "
-						<< "_allConnectedPlayers.size() = "
-						<< (int)message[0]
-						<< "; message.size() = "
-						<< (int)size
-						<< std::endl;
-					//char size;
-					//if (message[0] == 3)
-					//	size = message[0];
-					//size = message[0];
-					//for (int j = 0; j < size; j++) {
-					//	int index = 16 * j + 1;
-					//	std::cout << "sended id " << (int)message[index] << std::endl;
-					//}
-#endif // DEBUG
-#ifndef DISABLE_EVENTS_SENDING
-					client->send((char*)message, size);
+			if (size >= 18)
+				std::cout << "18th byte = " << (int)message[18] << std::endl;
+			if (size >= 34)
+				std::cout << "34th byte = " << (int)message[34] << std::endl;
+			for (int i = 0; i < _justConnectedClients->size(); i++) {
+				ClientSocket* client = _justConnectedClients->front();
+				_justConnectedClients->pop();
+#ifndef DISABLE_STATE_SENDING
+				client->sendState((char*)message, size);
 #endif
-				}
+			}
 		}
+
+// 		if (_connectActions->size() > 0)
+// 		{
+// 			_gameStateStream.clear();
+// 			_game.writeState(_gameStateStream);
+// 			unsigned char* message = new unsigned char[_gameStateStream.getLength()];
+// 			size_t size = _gameStateStream.getLength();
+// 			_gameStateStream.getBuf(message);
+// 				for (int i = 0; i < _connectActions->size(); i++) {
+// 					ClientSocket* client = _connectActions->front()();
+// 					_connectActions->pop();
+// #ifdef DEBUG
+// 					std::cout
+// 						<< "mailLoop; "
+// 						<< "_allConnectedPlayers.size() = "
+// 						<< (int)message[0]
+// 						<< "; message.size() = "
+// 						<< (int)size
+// 						<< std::endl;
+// 					//char size;
+// 					//if (message[0] == 3)
+// 					//	size = message[0];
+// 					//size = message[0];
+// 					//for (int j = 0; j < size; j++) {
+// 					//	int index = 16 * j + 1;
+// 					//	std::cout << "sended id " << (int)message[index] << std::endl;
+// 					//}
+// #endif // DEBUG
+// #ifndef DISABLE_STATE_SENDING
+// 					client->sendState((char*)message, size);
+// #endif
+// 				}
+// 		}
 		//std::cout << "Server loop\n";
 		_eventsStream.clear();
-		_eventHandler.write(_eventsStream);
+		_eventsStream << byte(0);
+		_eventHandler.writeEvents(_eventsStream);
 		
 		unsigned int length = _eventsStream.getLength();
 		unsigned char* buffer = new unsigned char[length];

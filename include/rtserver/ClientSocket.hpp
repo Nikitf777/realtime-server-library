@@ -10,6 +10,9 @@
 #include <functional>
 #include <thread>
 
+#include "asyncpp/task.h"
+#include "asyncpp/event.h"
+
 #include "ByteStream.hpp"
 #include "rtserver/PackageStructs.hpp"
 #include "rtserver/PackageFromPlayer.hpp"
@@ -23,10 +26,12 @@ private:
 	std::mutex _mutex;
 	byte _id;
 	std::array<char, 15> _name;
+	asyncpp::single_consumer_event event;
+
 
 	char* _receiveBuffer;
 
-	bool _connected = false;
+	bool _isConnected = false;
 	//std::optional<Spawned> _spawned;
 	//std::optional<Moved> _moved;
 	//std::optional<float> _rotated;
@@ -49,12 +54,14 @@ private:
 
 	void emitSignals(PackageFromPlayer& package) const;
 
+	void _authorize();
+
 
 public:
 
 	std::function<void(ClientSocket*)> readyEvent;
 
-	std::function<void(PlayerAction<Authorized>)> connected;
+	std::function<void(PlayerAction<Authorized>)> connectedEvent;
 	std::function<void(PlayerAction<Spawned>)> spawnedEvent;
 	std::function<void(PlayerAction<Moved>)> movedEvent;
 	std::function<void(PlayerAction<Rotated>)> rotatedEvent;
@@ -71,6 +78,7 @@ public:
 	void receiving();
 	void stop();
 	void send(const char* buffer, int size);
+	void sendState(const char* buffer, int size);
 
 	bool isConnected() const;
 

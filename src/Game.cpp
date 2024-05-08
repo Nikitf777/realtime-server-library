@@ -1,6 +1,5 @@
 #include "rtserver/Game.hpp"
 
-
 void Bullet::spawn(Transform transform)
 {
 	_transform = transform;
@@ -108,11 +107,11 @@ size_t Game::writeState(ByteStream& stream)
 {
 	size_t initialLength = stream.getLength();
 
-
 	_authorizedPlayers->runFunction([&stream] (Players* thisMap) {
 		stream << (byte)thisMap->size();
-		std::cout << "Writed _authorizedPlayers->size()" << (int)thisMap->size() << std::endl;
+		std::cout << "Writed _authorizedPlayers->size() = " << (int)thisMap->size() << std::endl;
 		for (auto i = thisMap->begin(); i != thisMap->end(); ++i) {
+			std::cout << "Writed id = " << (int)(*i).first << std::endl;
 			stream << PlayerAction<Authorized>{PlayerId{ (*i).first }, Authorized{ (*i).second->getName() }};
 		}
 		});
@@ -131,6 +130,7 @@ size_t Game::writeState(ByteStream& stream)
 		}
 		});
 
+	
 	//stream << byte(_authorizedPlayers->size());
 	//std::cout << "Writed _authorizedPlayers->size()" << (int)_authorizedPlayers->size() << std::endl;
 	//for (auto i = _authorizedPlayers->begin(); i != _authorizedPlayers->end(); ++i) {
@@ -152,7 +152,9 @@ size_t Game::writeState(ByteStream& stream)
 
 void Game::onPlayerAuthorized(PlayerAction<Authorized> authrized)
 {
-	_authorizedPlayers->operator[](authrized.id) = new Player(authrized.id, authrized.package.name);
+	// _authorizedPlayers->operator[](authrized.id) = new Player(authrized.id, authrized.package.name);
+	std::cout << "Authorized id = " << (int)authrized.id << std::endl << std::endl;
+	_authorizedPlayers->insert({authrized.id, new Player(authrized.id, authrized.package.name)});
 	std::cout << "_authorizedPlayers.size = " << _authorizedPlayers->size() << std::endl;
 }
 
@@ -193,7 +195,7 @@ void Game::onBulletSpawned(PlayerAction<BulletSpawned> event)
 	auto bullet = _bullets->operator[](GlobalBulletId{ event.id, event.package.bulletId }) = _spawnedPlayers->operator[](event.id)->spawnBullet(event.package);
 	//std::cout << "onBulletSpawned\tbulletId = " << int(event.package.bulletId) << "\t_bullets.size() = " << _bullets->size() << std::endl;
 	if (bullet == nullptr)
-		std::cout << "bullet was null\n";
+		std::cerr << "bullet was null\n";
 }
 
 void Game::onBulletMoved(PlayerAction<BulletMoved> event)

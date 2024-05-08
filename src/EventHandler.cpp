@@ -44,7 +44,7 @@ void EventHandler::onClientBulletDissapeared(PlayerAction<BulletDissapeared> eve
     _bulletDissapearedClients->push_back(event);
 }
 
-void EventHandler::write(ByteStream &stream){
+void EventHandler::writeEvents(ByteStream &stream){
     _authorizedClients->writeAllToStream(stream);
     _spawnedClients->writeAllToStream(stream);
     _movedClients->writeAllToStream(stream);

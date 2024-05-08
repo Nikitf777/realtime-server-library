@@ -43,7 +43,7 @@ public:
 	void onClientBulletCollided(PlayerAction<BulletCollided> event);
 	void onClientBulletDissapeared(PlayerAction<BulletDissapeared> event);
 
-	void write(ByteStream& stream);
+	void writeEvents(ByteStream& stream);
 
 	std::array<std::pair<std::string, byte>, 11> getSizes();
 };
